@@ -72,48 +72,49 @@ jobs:
             const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
 
             // ===== 授業メッセージ（テキスト）=====
-            const messageText = `明日は授業日です
+            const messageText = `📚 明日は授業日です
+            
             【今日アレッシオの楽しいNext.js】
-
-            日付：${target.date}
-            時間：${target.time}
-
-            関連 Issue
+            
+            🗓 日付：${target.date}
+            ⏰ 時間：${target.time}
+            
+            📝 関連 Issue
             ${issueList}
-
-            GitHub
+            
+            🔗 GitHub
             ${repoUrl}
-
+            
             ${taunt}`;
 
-            // ===== 天気API（Open-Meteo）=====
+            // ===== 天気API（ノルウェー気象庁 met.no）=====
             const weatherRes = await fetch(
-              "https://api.open-meteo.com/v1/forecast" +
-              "?latitude=34.6720" +
-              "&longitude=135.5016" +
-              "&daily=weathercode,temperature_2m_max,temperature_2m_min" +
-              "&timezone=Asia%2FTokyo"
+              "https://api.met.no/weatherapi/locationforecast/2.0/compact" +
+              "?lat=34.6720&lon=135.5016",
+              {
+                headers: {
+                  "User-Agent": "alessio-nextjs-class-reminder"
+                }
+              }
             );
 
             const weatherData = await weatherRes.json();
 
-            const weatherCode = weatherData.daily.weathercode[1];
-            const maxTemp = weatherData.daily.temperature_2m_max[1];
-            const minTemp = weatherData.daily.temperature_2m_min[1];
+            const timeseries = weatherData.properties.timeseries;
+            const weatherTarget = timeseries.find(t =>
+              t.time.startsWith(tomorrowStr)
+            );
 
-            function weatherText(code) {
-              if (code === 0) return "快晴";
-              if ([1, 2, 3].includes(code)) return "晴れ";
-              if ([45, 48].includes(code)) return "霧";
-              if ([51, 53, 55].includes(code)) return "小雨";
-              if ([61, 63, 65].includes(code)) return "雨";
-              if ([71, 73, 75].includes(code)) return "雪";
-              return "不明";
-            }
+            const symbol =
+              weatherTarget.data.next_12_hours.summary.symbol_code;
 
-            const weatherLabel = weatherText(weatherCode);
+            const temp =
+              weatherTarget.data.instant.details.air_temperature;
 
-            // ===== Discord送信（テキスト＋Embed）=====
+            const iconUrl =
+              `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/main/assets/weather/${symbol}.png`;
+
+            // ===== Discord送信 =====
             await fetch(webhook, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -123,9 +124,12 @@ jobs:
                 content: messageText,
                 embeds: [
                   {
-                    title: "明日の心斎橋の天気",
-                    description: `${weatherLabel}\n最高 ${maxTemp}℃ / 最低 ${minTemp}℃`,
-                    color: 0x00ADEF
+                    title: "🌤 明日の心斎橋の天気",
+                    description: `天気：${symbol.replace(/_/g, " ")}\n気温：${temp}℃`,
+                    color: 0x00ADEF,
+                    thumbnail: {
+                      url: iconUrl
+                    }
                   }
                 ]
               })
