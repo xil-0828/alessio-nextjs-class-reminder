@@ -1,0 +1,93 @@
+name: Class Reminder
+
+on:
+  schedule:
+    # 毎日 21:00 JST（UTC 12:00）
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Notify if class is tomorrow
+        uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          script: |
+            const fs = require("fs");
+
+            const webhook = process.env.DISCORD_WEBHOOK_URL;
+            if (!webhook) {
+              core.setFailed("DISCORD_WEBHOOK_URL is not set");
+              return;
+            }
+
+            // データ読み込み
+            const classes = JSON.parse(
+              fs.readFileSync("data/classes.json", "utf8")
+            );
+            const taunts = JSON.parse(
+              fs.readFileSync("data/taunts.json", "utf8")
+            );
+
+            // 日付計算
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setDate(now.getDate() + 1);
+
+            const yyyy = tomorrow.getFullYear();
+            const mm = String(tomorrow.getMonth() + 1).padStart(2, "0");
+            const dd = String(tomorrow.getDate()).padStart(2, "0");
+            const tomorrowStr = `${yyyy}-${mm}-${dd}`;
+
+            const target = classes.find(c => c.date === tomorrowStr);
+            if (!target) {
+              console.log("No class tomorrow");
+              return;
+            }
+
+            // Issue取得
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: "open",
+                per_page: 100
+              }
+            );
+
+            const issueList =
+              issues.length > 0
+                ? issues.map(i => `- #${i.number} ${i.title}`).join("\n")
+                : "特になし";
+
+            const taunt = taunts[Math.floor(Math.random() * taunts.length)];
+
+            // ★ ここ重要：バッククォートも必ずインデントされている
+            const messageText = `明日は授業日です
+【今日アレッシオの楽しいNext.js】
+
+日付：${target.date}
+時間：${target.time}
+
+関連 Issue
+${issueList}
+
+${taunt}`;
+
+            const message = {
+              content: messageText
+            };
+
+            await fetch(webhook, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(message)
+            });
