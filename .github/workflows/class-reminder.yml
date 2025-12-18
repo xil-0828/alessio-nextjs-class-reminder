@@ -72,16 +72,12 @@ jobs:
 
             // ★ ここ重要：バッククォートも必ずインデントされている
             const messageText = `明日は授業日です
-【今日アレッシオの楽しいNext.js】
-
-日付：${target.date}
-時間：${target.time}
-
-関連 Issue
-${issueList}
-
-${taunt}`;
-
+            【今日アレッシオの楽しいNext.js】
+            日付：${target.date}
+            時間：${target.time}
+            関連 Issue
+            ${issueList}
+            ${taunt}`;
             const message = {
               content: messageText
             };
