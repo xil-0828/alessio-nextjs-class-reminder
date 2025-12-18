@@ -69,6 +69,7 @@ jobs:
                 : "特になし";
 
             const taunt = taunts[Math.floor(Math.random() * taunts.length)];
+            const repoUrl = "https://github.com/xil-0828/alessio-nextjs-class-reminder";
 
             // ★ ここ重要：バッククォートも必ずインデントされている
             const messageText = `明日は授業日です
@@ -77,6 +78,8 @@ jobs:
             時間：${target.time}
             関連 Issue
             ${issueList}
+            GitHub
+            ${repoUrl}
             ${taunt}`;
             const message = {
               content: messageText
