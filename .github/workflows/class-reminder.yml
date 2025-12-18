@@ -86,7 +86,13 @@ jobs:
             };
 
             await fetch(webhook, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(message)
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+            username: "Alessio Next.js Class",
+            avatar_url: `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/main/assets/discord-icon.png`,
+            content: messageText
+            })
             });
+
+            
