@@ -28,7 +28,7 @@ jobs:
               return;
             }
 
-            // データ読み込み
+            // ===== データ読み込み =====
             const classes = JSON.parse(
               fs.readFileSync("data/classes.json", "utf8")
             );
@@ -36,7 +36,7 @@ jobs:
               fs.readFileSync("data/taunts.json", "utf8")
             );
 
-            // 日付計算
+            // ===== 日付計算 =====
             const now = new Date();
             const tomorrow = new Date(now);
             tomorrow.setDate(now.getDate() + 1);
@@ -52,7 +52,7 @@ jobs:
               return;
             }
 
-            // Issue取得
+            // ===== Issue取得 =====
             const issues = await github.paginate(
               github.rest.issues.listForRepo,
               {
@@ -69,30 +69,64 @@ jobs:
                 : "特になし";
 
             const taunt = taunts[Math.floor(Math.random() * taunts.length)];
-            const repoUrl = "https://github.com/xil-0828/alessio-nextjs-class-reminder";
+            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
 
-            // ★ ここ重要：バッククォートも必ずインデントされている
+            // ===== 授業メッセージ（テキスト）=====
             const messageText = `明日は授業日です
             【今日アレッシオの楽しいNext.js】
+
             日付：${target.date}
             時間：${target.time}
+
             関連 Issue
             ${issueList}
+
             GitHub
             ${repoUrl}
+
             ${taunt}`;
-            const message = {
-              content: messageText
-            };
 
+            // ===== 天気API（Open-Meteo）=====
+            const weatherRes = await fetch(
+              "https://api.open-meteo.com/v1/forecast" +
+              "?latitude=34.6720" +
+              "&longitude=135.5016" +
+              "&daily=weathercode,temperature_2m_max,temperature_2m_min" +
+              "&timezone=Asia%2FTokyo"
+            );
+
+            const weatherData = await weatherRes.json();
+
+            const weatherCode = weatherData.daily.weathercode[1];
+            const maxTemp = weatherData.daily.temperature_2m_max[1];
+            const minTemp = weatherData.daily.temperature_2m_min[1];
+
+            function weatherText(code) {
+              if (code === 0) return "快晴";
+              if ([1, 2, 3].includes(code)) return "晴れ";
+              if ([45, 48].includes(code)) return "霧";
+              if ([51, 53, 55].includes(code)) return "小雨";
+              if ([61, 63, 65].includes(code)) return "雨";
+              if ([71, 73, 75].includes(code)) return "雪";
+              return "不明";
+            }
+
+            const weatherLabel = weatherText(weatherCode);
+
+            // ===== Discord送信（テキスト＋Embed）=====
             await fetch(webhook, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-            username: "Alessio Next.js Class",
-            avatar_url: `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/main/assets/discord-icon.png`,
-            content: messageText
-            })
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                username: "Alessio Next.js Class",
+                avatar_url: `https://raw.githubusercontent.com/${context.repo.owner}/${context.repo.repo}/main/assets/discord-icon.png`,
+                content: messageText,
+                embeds: [
+                  {
+                    title: "明日の心斎橋の天気",
+                    description: `${weatherLabel}\n最高 ${maxTemp}℃ / 最低 ${minTemp}℃`,
+                    color: 0x00ADEF
+                  }
+                ]
+              })
             });
-
-            
